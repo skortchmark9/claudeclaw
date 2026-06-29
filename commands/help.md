@@ -15,6 +15,8 @@ Display this help information to the user:
 - `/heartbeat:jobs` — Create, list, edit, or delete cron jobs
 - `/heartbeat:logs` — Show recent execution logs (accepts count or job name filter)
 - `/heartbeat:telegram` — Show Telegram bot status and sessions (use `clear` to reset sessions)
+- `/heartbeat:discord` — Show Discord bot status and sessions (use `clear` to reset sessions)
+- `/heartbeat:slack` — Show Slack bot status and sessions (use `clear` to reset sessions)
 - `/heartbeat:help` — Show this help message
 
 **Start command options (CLI):**
@@ -57,3 +59,12 @@ Schedule uses standard cron syntax: `minute hour day-of-month month day-of-week`
 - Configure in `.claude/claudeclaw/settings.json` under `telegram`
 - Daemon mode can run Telegram polling in-process when token is configured
 - Startup trigger `start --trigger --telegram` and daemon `send --telegram` can forward responses
+
+**Discord:**
+- Configure in `.claude/claudeclaw/settings.json` under `discord` (`token`, `allowedUserIds`, `listenChannels`)
+- Runs in-process with the daemon when a token is configured
+
+**Slack:**
+- Configure in `.claude/claudeclaw/settings.json` under `slack` (`botToken` `xoxb-…`, `appToken` `xapp-…`, `allowedUserIds`, `listenChannels`)
+- Uses Socket Mode — no public URL needed; runs in-process with the daemon when both tokens are set
+- Confirm the connection with `[Slack] Socket connected` in `logs/daemon.log`
