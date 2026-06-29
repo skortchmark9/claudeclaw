@@ -145,6 +145,11 @@ See [docs/MULTI_SESSION.md](docs/MULTI_SESSION.md) for technical details.
 - **Security Levels:** Four access levels from read-only to full system access.
 - **Model Selection:** Switch models based on your workload.
 
+### Agent Persona (`agent/`)
+- Drop one or more Markdown files in an `agent/` directory at your project root (e.g. `agent/SOUL.md`, `agent/IDENTITY.md`).
+- Every `*.md` in `agent/` (sorted by name) is appended to the **daemon's** system prompt on every heartbeat, cron, and chat-bridge run.
+- This is separate from `CLAUDE.md`: persona docs are version-controlled, scoped to the project, and **not** loaded by manually-driven coding agents that read `CLAUDE.md`. Keep your assistant's soul out of your coding instructions.
+
 ## FAQ
 
 <details open>

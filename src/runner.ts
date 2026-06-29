@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, realpath } from "fs/promises";
+import { mkdir, readFile, writeFile, realpath, readdir } from "fs/promises";
 import { join, dirname, resolve, sep } from "path";
 import { execSync } from "child_process";
 import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
@@ -38,6 +38,11 @@ const PROMPTS_DIR = join(import.meta.dir, "..", "prompts");
 const HEARTBEAT_PROMPT_FILE = join(PROMPTS_DIR, "heartbeat", "HEARTBEAT.md");
 // Project-level prompt overrides live here (gitignored, user-owned)
 const PROJECT_PROMPTS_DIR = join(process.cwd(), ".claude", "claudeclaw", "prompts");
+// Project-level agent persona. Version-controlled persona/soul docs that apply
+// ONLY to ClaudeClaw daemon runs (heartbeat, cron, chat bridges) — they are
+// appended to the daemon's system prompt and are NOT part of CLAUDE.md, so
+// manually-driven coding agents never load them. Drop any *.md files in here.
+const PROJECT_AGENT_DIR = join(process.cwd(), "agent");
 const PROJECT_CLAUDE_MD = join(process.cwd(), "CLAUDE.md");
 const LEGACY_PROJECT_CLAUDE_MD = join(process.cwd(), ".claude", "CLAUDE.md");
 const CLAUDECLAW_BLOCK_START = "<!-- claudeclaw:managed:start -->";
@@ -918,6 +923,34 @@ async function loadPrompts(): Promise<string> {
 }
 
 /**
+ * Load the project-level agent persona from `<project>/agent/*.md`.
+ * Concatenates every Markdown file in the directory (sorted by name) so the
+ * persona can be split across files (SOUL.md, IDENTITY.md, etc.). Returns an
+ * empty string when the directory is absent or holds no Markdown. This is
+ * daemon-only persona: it never touches CLAUDE.md, so manual coding sessions
+ * are unaffected.
+ */
+export async function loadAgentPersona(): Promise<string> {
+  let entries: string[];
+  try {
+    entries = await readdir(PROJECT_AGENT_DIR);
+  } catch {
+    return "";
+  }
+  const mdFiles = entries.filter((name) => name.toLowerCase().endsWith(".md")).sort();
+  const parts: string[] = [];
+  for (const name of mdFiles) {
+    try {
+      const content = await Bun.file(join(PROJECT_AGENT_DIR, name)).text();
+      if (content.trim()) parts.push(content.trim());
+    } catch (e) {
+      console.error(`[${new Date().toLocaleTimeString()}] Failed to read agent persona file ${name}:`, e);
+    }
+  }
+  return parts.join("\n\n");
+}
+
+/**
  * Load the heartbeat prompt template.
  * Project-level override takes precedence: place a file at
  * .claude/claudeclaw/prompts/HEARTBEAT.md to fully replace the built-in template.
@@ -1123,6 +1156,10 @@ async function execClaude(
   } catch (e) {
     console.error(`[${new Date().toLocaleTimeString()}] Failed to read project CLAUDE.md:`, e);
   }
+
+  // Daemon-only persona from <project>/agent/*.md (separate from CLAUDE.md).
+  const agentPersona = await loadAgentPersona();
+  if (agentPersona) appendParts.push(agentPersona);
 
   // Plugins: before_prompt_build — lets plugins inject system context
   if (pm) {
@@ -1487,6 +1524,10 @@ async function streamClaude(
     const claudeMd = await Bun.file(PROJECT_CLAUDE_MD).text();
     if (claudeMd.trim()) appendParts.push(claudeMd.trim());
   } catch {}
+
+  // Daemon-only persona from <project>/agent/*.md (separate from CLAUDE.md).
+  const streamAgentPersona = await loadAgentPersona();
+  if (streamAgentPersona) appendParts.push(streamAgentPersona);
 
   // Plugins: before_prompt_build
   if (streamPm) {
